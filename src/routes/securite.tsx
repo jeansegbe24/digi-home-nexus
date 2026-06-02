@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
-import { Shield, Camera, AlertTriangle, Lock, Eye, Radio, Activity } from "lucide-react";
+import { Shield, AlertTriangle, Lock, Eye, Radio, Activity } from "lucide-react";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { CameraFeed } from "@/components/CameraFeed";
+import { PageTransition } from "@/components/PageTransition";
 
 export const Route = createFileRoute("/securite")({
   head: () => ({
@@ -15,10 +18,10 @@ export const Route = createFileRoute("/securite")({
 });
 
 const cameras = [
-  { name: "Entrée principale", live: true },
-  { name: "Jardin", live: true },
-  { name: "Garage", live: true },
-  { name: "Couloir", live: false },
+  { name: "Entrée principale", live: true, mode: "night" as const, motion: true },
+  { name: "Jardin", live: true, mode: "thermal" as const, motion: false },
+  { name: "Garage", live: true, mode: "night" as const, motion: false },
+  { name: "Couloir", live: false, mode: "day" as const, motion: false },
 ];
 
 const alerts = [
@@ -33,23 +36,36 @@ function Securite() {
 
   return (
     <AppShell title="Sécurité intelligente" subtitle="Protection active 24h/24 — monitoring temps réel.">
-      {/* Status hero */}
-      <section className={cn(
-        "relative overflow-hidden glass-strong rounded-3xl p-8 mb-8 border-2 transition",
-        armed ? "border-success/30" : "border-destructive/30"
-      )}>
-        <div className={cn(
-          "absolute inset-0 pointer-events-none opacity-30",
-          armed ? "bg-gradient-to-br from-success/20 to-transparent" : "bg-gradient-to-br from-destructive/20 to-transparent"
-        )} />
+      <PageTransition>
+      <motion.section
+        layout
+        className={cn(
+          "relative overflow-hidden glass-strong rounded-3xl p-8 mb-8 border-2 transition",
+          armed ? "border-success/30" : "border-destructive/30"
+        )}
+      >
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          animate={{ opacity: [0.2, 0.4, 0.2] }}
+          transition={{ duration: 4, repeat: Infinity }}
+          style={{
+            background: armed
+              ? "radial-gradient(at 30% 50%, oklch(0.72 0.19 155 / 0.25), transparent 60%)"
+              : "radial-gradient(at 30% 50%, oklch(0.65 0.24 25 / 0.25), transparent 60%)",
+          }}
+        />
         <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className={cn(
-              "h-20 w-20 rounded-3xl flex items-center justify-center",
-              armed ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
-            )}>
+            <motion.div
+              animate={{ scale: armed ? [1, 1.05, 1] : 1 }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className={cn(
+                "h-20 w-20 rounded-3xl flex items-center justify-center",
+                armed ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
+              )}
+            >
               <Shield className="h-10 w-10" />
-            </div>
+            </motion.div>
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-1">État système</p>
               <h2 className="text-3xl font-bold">{armed ? "Maison protégée" : "Sécurité désarmée"}</h2>
@@ -58,56 +74,39 @@ function Securite() {
               </p>
             </div>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.96 }}
             onClick={() => setArmed(!armed)}
             className={cn(
-              "px-6 py-4 rounded-2xl font-semibold flex items-center gap-2 transition glow-primary",
+              "px-6 py-4 rounded-2xl font-semibold flex items-center gap-2 transition",
               armed
                 ? "bg-destructive/20 text-destructive border border-destructive/40 hover:bg-destructive/30"
-                : "bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                : "bg-gradient-to-r from-primary to-accent text-primary-foreground glow-primary"
             )}
           >
             <Lock className="h-4 w-4" />
             {armed ? "Désarmer le système" : "Armer le système"}
-          </button>
+          </motion.button>
         </div>
-      </section>
+      </motion.section>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Cameras */}
         <section className="lg:col-span-2">
           <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-4">Caméras live</h3>
           <div className="grid sm:grid-cols-2 gap-4">
             {cameras.map((c, i) => (
-              <div
+              <motion.div
                 key={c.name}
-                className="glass rounded-2xl overflow-hidden card-hover animate-slide-up"
-                style={{ animationDelay: `${i * 60}ms` }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
               >
-                <div className="relative aspect-video bg-gradient-to-br from-secondary to-background flex items-center justify-center">
-                  <Camera className="h-12 w-12 text-muted-foreground/40" />
-                  <div className="absolute top-3 left-3 flex items-center gap-2 glass-strong rounded-full px-3 py-1">
-                    <span className={cn("h-2 w-2 rounded-full", c.live ? "bg-destructive animate-pulse-glow" : "bg-muted-foreground")} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">{c.live ? "Live" : "Hors ligne"}</span>
-                  </div>
-                  <div className="absolute bottom-3 right-3 glass rounded-md px-2 py-1 text-[10px] font-mono">
-                    {new Date().toLocaleTimeString("fr-FR")}
-                  </div>
-                  {/* scanline */}
-                  {c.live && (
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent pointer-events-none" />
-                  )}
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <p className="font-medium text-sm">{c.name}</p>
-                  <button className="text-xs text-primary hover:underline">Plein écran</button>
-                </div>
-              </div>
+                <CameraFeed name={c.name} live={c.live} mode={c.mode} motionDetected={c.motion} />
+              </motion.div>
             ))}
           </div>
         </section>
 
-        {/* Alerts */}
         <section>
           <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
             <Activity className="h-4 w-4" /> Alertes & événements
@@ -119,7 +118,13 @@ function Securite() {
                 : a.level === "ok" ? "text-success bg-success/15"
                 : "text-primary bg-primary/15";
               return (
-                <div key={i} className="p-4 flex items-start gap-3">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 + i * 0.08 }}
+                  className="p-4 flex items-start gap-3"
+                >
                   <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center shrink-0", color)}>
                     <Icon className="h-4 w-4" />
                   </div>
@@ -127,12 +132,13 @@ function Securite() {
                     <p className="text-sm">{a.text}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">{a.time}</p>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
         </section>
       </div>
+      </PageTransition>
     </AppShell>
   );
 }
