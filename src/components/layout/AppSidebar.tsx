@@ -61,7 +61,7 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-glass-border">
+      <div className="p-4 border-t border-glass-border space-y-2">
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center text-sm font-bold">
@@ -74,6 +74,9 @@ export function AppSidebar() {
             <Settings className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" />
           </div>
         </div>
+        <Link to="/connexion" className="block text-center text-xs text-muted-foreground hover:text-foreground py-2">
+          Se déconnecter
+        </Link>
       </div>
     </aside>
   );
