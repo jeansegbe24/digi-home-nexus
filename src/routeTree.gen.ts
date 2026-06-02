@@ -9,8 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UtilisateursRouteImport } from './routes/utilisateurs'
+import { Route as SeniorRouteImport } from './routes/senior'
+import { Route as SecuriteRouteImport } from './routes/securite'
+import { Route as EnergieRouteImport } from './routes/energie'
+import { Route as EclairageRouteImport } from './routes/eclairage'
+import { Route as AccesRouteImport } from './routes/acces'
 import { Route as IndexRouteImport } from './routes/index'
 
+const UtilisateursRoute = UtilisateursRouteImport.update({
+  id: '/utilisateurs',
+  path: '/utilisateurs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeniorRoute = SeniorRouteImport.update({
+  id: '/senior',
+  path: '/senior',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecuriteRoute = SecuriteRouteImport.update({
+  id: '/securite',
+  path: '/securite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnergieRoute = EnergieRouteImport.update({
+  id: '/energie',
+  path: '/energie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EclairageRoute = EclairageRouteImport.update({
+  id: '/eclairage',
+  path: '/eclairage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccesRoute = AccesRouteImport.update({
+  id: '/acces',
+  path: '/acces',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +55,116 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acces': typeof AccesRoute
+  '/eclairage': typeof EclairageRoute
+  '/energie': typeof EnergieRoute
+  '/securite': typeof SecuriteRoute
+  '/senior': typeof SeniorRoute
+  '/utilisateurs': typeof UtilisateursRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acces': typeof AccesRoute
+  '/eclairage': typeof EclairageRoute
+  '/energie': typeof EnergieRoute
+  '/securite': typeof SecuriteRoute
+  '/senior': typeof SeniorRoute
+  '/utilisateurs': typeof UtilisateursRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acces': typeof AccesRoute
+  '/eclairage': typeof EclairageRoute
+  '/energie': typeof EnergieRoute
+  '/securite': typeof SecuriteRoute
+  '/senior': typeof SeniorRoute
+  '/utilisateurs': typeof UtilisateursRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/acces'
+    | '/eclairage'
+    | '/energie'
+    | '/securite'
+    | '/senior'
+    | '/utilisateurs'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/acces'
+    | '/eclairage'
+    | '/energie'
+    | '/securite'
+    | '/senior'
+    | '/utilisateurs'
+  id:
+    | '__root__'
+    | '/'
+    | '/acces'
+    | '/eclairage'
+    | '/energie'
+    | '/securite'
+    | '/senior'
+    | '/utilisateurs'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccesRoute: typeof AccesRoute
+  EclairageRoute: typeof EclairageRoute
+  EnergieRoute: typeof EnergieRoute
+  SecuriteRoute: typeof SecuriteRoute
+  SeniorRoute: typeof SeniorRoute
+  UtilisateursRoute: typeof UtilisateursRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/utilisateurs': {
+      id: '/utilisateurs'
+      path: '/utilisateurs'
+      fullPath: '/utilisateurs'
+      preLoaderRoute: typeof UtilisateursRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/senior': {
+      id: '/senior'
+      path: '/senior'
+      fullPath: '/senior'
+      preLoaderRoute: typeof SeniorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/securite': {
+      id: '/securite'
+      path: '/securite'
+      fullPath: '/securite'
+      preLoaderRoute: typeof SecuriteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/energie': {
+      id: '/energie'
+      path: '/energie'
+      fullPath: '/energie'
+      preLoaderRoute: typeof EnergieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/eclairage': {
+      id: '/eclairage'
+      path: '/eclairage'
+      fullPath: '/eclairage'
+      preLoaderRoute: typeof EclairageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acces': {
+      id: '/acces'
+      path: '/acces'
+      fullPath: '/acces'
+      preLoaderRoute: typeof AccesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,17 +177,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccesRoute: AccesRoute,
+  EclairageRoute: EclairageRoute,
+  EnergieRoute: EnergieRoute,
+  SecuriteRoute: SecuriteRoute,
+  SeniorRoute: SeniorRoute,
+  UtilisateursRoute: UtilisateursRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
