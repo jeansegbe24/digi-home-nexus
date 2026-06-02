@@ -14,6 +14,7 @@ import { Route as SeniorRouteImport } from './routes/senior'
 import { Route as SecuriteRouteImport } from './routes/securite'
 import { Route as EnergieRouteImport } from './routes/energie'
 import { Route as EclairageRouteImport } from './routes/eclairage'
+import { Route as ConnexionRouteImport } from './routes/connexion'
 import { Route as AccesRouteImport } from './routes/acces'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -42,6 +43,11 @@ const EclairageRoute = EclairageRouteImport.update({
   path: '/eclairage',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConnexionRoute = ConnexionRouteImport.update({
+  id: '/connexion',
+  path: '/connexion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AccesRoute = AccesRouteImport.update({
   id: '/acces',
   path: '/acces',
@@ -56,6 +62,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acces': typeof AccesRoute
+  '/connexion': typeof ConnexionRoute
   '/eclairage': typeof EclairageRoute
   '/energie': typeof EnergieRoute
   '/securite': typeof SecuriteRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acces': typeof AccesRoute
+  '/connexion': typeof ConnexionRoute
   '/eclairage': typeof EclairageRoute
   '/energie': typeof EnergieRoute
   '/securite': typeof SecuriteRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acces': typeof AccesRoute
+  '/connexion': typeof ConnexionRoute
   '/eclairage': typeof EclairageRoute
   '/energie': typeof EnergieRoute
   '/securite': typeof SecuriteRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acces'
+    | '/connexion'
     | '/eclairage'
     | '/energie'
     | '/securite'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acces'
+    | '/connexion'
     | '/eclairage'
     | '/energie'
     | '/securite'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/acces'
+    | '/connexion'
     | '/eclairage'
     | '/energie'
     | '/securite'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccesRoute: typeof AccesRoute
+  ConnexionRoute: typeof ConnexionRoute
   EclairageRoute: typeof EclairageRoute
   EnergieRoute: typeof EnergieRoute
   SecuriteRoute: typeof SecuriteRoute
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EclairageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/connexion': {
+      id: '/connexion'
+      path: '/connexion'
+      fullPath: '/connexion'
+      preLoaderRoute: typeof ConnexionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/acces': {
       id: '/acces'
       path: '/acces'
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccesRoute: AccesRoute,
+  ConnexionRoute: ConnexionRoute,
   EclairageRoute: EclairageRoute,
   EnergieRoute: EnergieRoute,
   SecuriteRoute: SecuriteRoute,
@@ -187,3 +208,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
