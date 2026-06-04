@@ -2,6 +2,7 @@ services:
   # ── Backend FastAPI Service ──────────────────────────────────────────
   - type: web
     name: digihome-backend
+    plan: free
     env: python
     rootDir: smart-home-backend
     buildCommand: pip install -r requirements.txt
@@ -24,6 +25,7 @@ services:
   # ── Frontend React/TanStack Service ──────────────────────────────────
   - type: web
     name: digihome-frontend
+    plan: free
     env: node
     rootDir: front
     buildCommand: npm install && npm run build
