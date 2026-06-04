@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
-import { Zap, TrendingDown, Leaf, Plug } from "lucide-react";
+import { Zap, TrendingDown, Leaf, Plug, RefreshCw, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,8 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { PageTransition } from "@/components/PageTransition";
-import { useLiveNumber } from "@/hooks/useLive";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api/client";
 
 export const Route = createFileRoute("/energie")({
   head: () => ({
@@ -20,12 +21,18 @@ export const Route = createFileRoute("/energie")({
   component: Energie,
 });
 
-const hours = Array.from({ length: 24 }, (_, i) => i);
-const data = hours.map((h) => ({
-  hour: `${h}h`,
-  kw: +(1.5 + Math.sin(h / 3) * 0.9 + (h > 17 && h < 22 ? 1.8 : 0) + Math.random() * 0.4).toFixed(2),
-  solaire: +(Math.max(0, Math.sin(((h - 6) / 12) * Math.PI)) * 2.2).toFixed(2),
-}));
+interface EnergyChartPoint {
+  hour: string;
+  kw: number;
+  solaire: number;
+}
+
+interface EnergyResponse {
+  conso: number;
+  eco: number;
+  co2: number;
+  chartData: EnergyChartPoint[];
+}
 
 const breakdown = [
   { label: "Chauffage", value: 38, color: "bg-orange-400" },
@@ -53,14 +60,63 @@ function CustomTooltip({ active, payload, label }: any) {
 
 function Energie() {
   const [range, setRange] = useState("24h");
-  const conso = useLiveNumber(12.8, { min: 11.5, max: 14, step: 0.2 });
-  const eco = useLiveNumber(42.3, { min: 40, max: 45, step: 0.15 });
-  const co2 = useLiveNumber(3.4, { min: 3.0, max: 3.8, step: 0.05 });
+
+  // Query linked to the range state
+  const { 
+    data, 
+    isLoading, 
+    error,
+    refetch 
+  } = useQuery<EnergyResponse>({
+    queryKey: ["energy", range],
+    queryFn: () => apiClient.get<EnergyResponse>(`/api/energy?range=${range}`),
+  });
+
+  if (error) {
+    return (
+      <AppShell title="Gestion énergétique" subtitle="Suivi temps réel et optimisations intelligentes.">
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="glass-strong p-8 rounded-3xl max-w-md text-center border border-destructive/20">
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-bold">Impossible de charger les données énergétiques</h3>
+            <p className="text-sm text-muted-foreground mt-2 mb-6">
+              Une erreur est survenue lors de la communication avec le module de télémesure.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="bg-primary text-primary-foreground font-semibold px-5 py-3 rounded-xl text-sm flex items-center gap-2 mx-auto hover:opacity-90 transition"
+            >
+              <RefreshCw className="h-4 w-4" /> Réessayer
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell title="Gestion énergétique" subtitle="Analyse de la consommation...">
+        <div className="space-y-8 animate-pulse">
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 glass rounded-2xl" />
+            ))}
+          </div>
+          <div className="h-80 glass rounded-2xl" />
+          <div className="grid lg:grid-cols-2 gap-6">
+            <div className="h-72 glass rounded-2xl" />
+            <div className="h-72 glass rounded-2xl" />
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   const kpis = [
-    { label: "Consommation jour", value: conso.toFixed(1), unit: "kWh", icon: Zap, trend: "-8%" },
-    { label: "Économie mois", value: eco.toFixed(2), unit: "€", icon: TrendingDown, trend: "-12%" },
-    { label: "Empreinte CO₂", value: co2.toFixed(1), unit: "kg", icon: Leaf, trend: "-15%" },
+    { label: "Consommation jour", value: data?.conso.toFixed(1) || "0.0", unit: "kWh", icon: Zap, trend: "-8%" },
+    { label: "Économie mois", value: data?.eco.toFixed(2) || "0.00", unit: "€", icon: TrendingDown, trend: "-12%" },
+    { label: "Empreinte CO₂", value: data?.co2.toFixed(1) || "0.0", unit: "kg", icon: Leaf, trend: "-15%" },
   ];
 
   return (
@@ -85,15 +141,10 @@ function Energie() {
                 <span className="text-xs text-success bg-success/15 rounded-full px-2 py-0.5">{k.trend}</span>
               </div>
               <p className="text-xs text-muted-foreground mb-1">{k.label}</p>
-              <motion.p
-                key={k.value}
-                initial={{ opacity: 0.6, y: -3 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl font-bold tabular-nums"
-              >
+              <p className="text-3xl font-bold tabular-nums">
                 {k.value}
                 <span className="text-base text-muted-foreground ml-1.5 font-normal">{k.unit}</span>
-              </motion.p>
+              </p>
             </motion.div>
           );
         })}
@@ -103,7 +154,7 @@ function Energie() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-lg font-semibold">Consommation vs. production solaire</h3>
-            <p className="text-xs text-muted-foreground">Profil heure par heure (kW)</p>
+            <p className="text-xs text-muted-foreground">Profil de consommation ({range === "24h" ? "kW" : "kWh"})</p>
           </div>
           <div className="flex gap-2">
             {["24h", "7j", "30j", "1a"].map((t) => (
@@ -123,7 +174,7 @@ function Energie() {
 
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={data?.chartData || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="gKw" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="oklch(0.78 0.18 195)" stopOpacity={0.6} />

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppSidebar, MobileNav } from "./AppSidebar";
 import { TopBar } from "./TopBar";
+import { useWebSocket } from "@/hooks/useLive";
 
 export function AppShell({
   title,
@@ -11,6 +12,9 @@ export function AppShell({
   subtitle?: string;
   children: ReactNode;
 }) {
+  // Activate background real-time updates when user is inside the app layout
+  useWebSocket();
+
   return (
     <div className="min-h-screen">
       <AppSidebar />
@@ -22,3 +26,4 @@ export function AppShell({
     </div>
   );
 }
+

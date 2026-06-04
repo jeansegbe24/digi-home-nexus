@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
-import { Lightbulb, Sparkles, Moon, Sun, Film, Coffee } from "lucide-react";
-import { useState } from "react";
+import { Lightbulb, Sparkles, Moon, Sun, Film, Coffee, RefreshCw, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api/client";
+import { toast } from "sonner";
+import { PageTransition } from "@/components/PageTransition";
 
 export const Route = createFileRoute("/eclairage")({
   head: () => ({
@@ -14,14 +18,16 @@ export const Route = createFileRoute("/eclairage")({
   component: Eclairage,
 });
 
-const initialRooms = [
-  { name: "Salon", on: true, brightness: 70, color: "warm" },
-  { name: "Cuisine", on: false, brightness: 100, color: "cool" },
-  { name: "Chambre principale", on: true, brightness: 25, color: "warm" },
-  { name: "Bureau", on: true, brightness: 85, color: "cool" },
-  { name: "Salle de bain", on: false, brightness: 60, color: "warm" },
-  { name: "Entrée", on: true, brightness: 50, color: "warm" },
-];
+interface Room {
+  id: string;
+  name: string;
+  devices: number;
+  active: number;
+  temp: string;
+  lit: boolean;
+  brightness: number;
+  color: "warm" | "cool";
+}
 
 const scenes = [
   { name: "Réveil doux", icon: Sun, gradient: "from-amber-300 to-orange-400" },
@@ -30,11 +36,84 @@ const scenes = [
   { name: "Nuit", icon: Moon, gradient: "from-indigo-400 to-violet-500" },
 ];
 
+const getSceneIcon = (name: string) => {
+  switch (name) {
+    case "Réveil doux": return Sun;
+    case "Concentration": return Coffee;
+    case "Soirée cinéma": return Film;
+    case "Nuit": return Moon;
+    default: return Sparkles;
+  }
+};
+
 function Eclairage() {
-  const [rooms, setRooms] = useState(initialRooms);
+  const queryClient = useQueryClient();
+
+  // Queries
+  const { 
+    data: rooms, 
+    isLoading, 
+    error,
+    refetch
+  } = useQuery<Room[]>({
+    queryKey: ["rooms"],
+    queryFn: () => apiClient.get<Room[]>("/api/rooms"),
+  });
+
+  // Mutations
+  const activateScenarioMutation = useMutation({
+    mutationFn: (scenarioName: string) => 
+      apiClient.post("/api/scenarios/activate", { name: scenarioName }),
+    onSuccess: (_, scenarioName) => {
+      toast.success(`Scénario « ${scenarioName} » activé !`);
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    }
+  });
+
+  if (error) {
+    return (
+      <AppShell title="Éclairage intelligent" subtitle="Contrôlez l'ambiance lumineuse de chaque pièce.">
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="glass-strong p-8 rounded-3xl max-w-md text-center border border-destructive/20">
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-bold">Impossible de charger les pièces</h3>
+            <p className="text-sm text-muted-foreground mt-2 mb-6">
+              Une erreur est survenue lors du chargement des lumières de la maison.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="bg-primary text-primary-foreground font-semibold px-5 py-3 rounded-xl text-sm flex items-center gap-2 mx-auto hover:opacity-90 transition"
+            >
+              <RefreshCw className="h-4 w-4" /> Réessayer
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell title="Éclairage intelligent" subtitle="Chargement de l'ambiance...">
+        <div className="space-y-8 animate-pulse">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 glass rounded-2xl" />
+            ))}
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-44 glass rounded-2xl" />
+            ))}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="Éclairage intelligent" subtitle="Contrôlez l'ambiance lumineuse de chaque pièce.">
+      <PageTransition>
       {/* Scenes */}
       <section className="mb-8">
         <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
@@ -42,11 +121,13 @@ function Eclairage() {
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {scenes.map((s, i) => {
-            const Icon = s.icon;
+            const Icon = getSceneIcon(s.name);
             return (
               <button
                 key={s.name}
-                className="group relative overflow-hidden glass rounded-2xl p-6 text-left card-hover animate-slide-up"
+                onClick={() => activateScenarioMutation.mutate(s.name)}
+                disabled={activateScenarioMutation.isPending}
+                className="group relative overflow-hidden glass rounded-2xl p-6 text-left card-hover animate-slide-up disabled:opacity-50"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
                 <div className={cn("absolute inset-0 bg-gradient-to-br opacity-20 group-hover:opacity-40 transition", s.gradient)} />
@@ -63,56 +144,96 @@ function Eclairage() {
       <section>
         <h3 className="text-sm uppercase tracking-widest text-muted-foreground mb-4">Pièces</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {rooms.map((r, idx) => (
-            <div key={r.name} className="glass rounded-2xl p-6 card-hover">
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "h-12 w-12 rounded-xl flex items-center justify-center transition",
-                    r.on ? "bg-gradient-to-br from-amber-300/30 to-orange-400/30 text-amber-200 glow-primary" : "bg-white/5 text-muted-foreground"
-                  )}>
-                    <Lightbulb className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">{r.name}</p>
-                    <p className="text-xs text-muted-foreground">{r.on ? `${r.brightness}% · ${r.color === "warm" ? "Chaud" : "Froid"}` : "Éteint"}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setRooms((p) => p.map((x, i) => i === idx ? { ...x, on: !x.on } : x))}
-                  className={cn(
-                    "relative h-7 w-12 rounded-full transition",
-                    r.on ? "bg-primary" : "bg-white/10"
-                  )}
-                >
-                  <span className={cn(
-                    "absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-lg transition-transform",
-                    r.on ? "translate-x-5" : "translate-x-0.5"
-                  )} />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Intensité</span>
-                  <span className="tabular-nums">{r.brightness}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={r.brightness}
-                  disabled={!r.on}
-                  onChange={(e) =>
-                    setRooms((p) => p.map((x, i) => i === idx ? { ...x, brightness: Number(e.target.value) } : x))
-                  }
-                  className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-primary disabled:opacity-40"
-                />
-              </div>
-            </div>
+          {rooms?.map((r) => (
+            <RoomCard key={r.id || r.name} room={r} />
           ))}
         </div>
       </section>
+      </PageTransition>
     </AppShell>
+  );
+}
+
+function RoomCard({ room }: { room: Room }) {
+  const queryClient = useQueryClient();
+  const [localBrightness, setLocalBrightness] = useState(room.brightness);
+
+  // Sync with react-query updates (e.g. from WebSockets or mutations)
+  useEffect(() => {
+    setLocalBrightness(room.brightness);
+  }, [room.brightness]);
+
+  const updateRoomMutation = useMutation({
+    mutationFn: (updates: { lit?: boolean; brightness?: number }) => 
+      apiClient.patch<Room>(`/api/rooms/${room.id}`, updates),
+    onSuccess: (updatedRoom) => {
+      queryClient.setQueryData<Room[]>(["rooms"], (prev) => 
+        prev?.map((r) => r.id === updatedRoom.id ? updatedRoom : r)
+      );
+    },
+    onError: () => {
+      // Revert local value on error
+      setLocalBrightness(room.brightness);
+    }
+  });
+
+  const handleToggle = () => {
+    updateRoomMutation.mutate({ lit: !room.lit });
+  };
+
+  const handleBrightnessRelease = () => {
+    updateRoomMutation.mutate({ brightness: localBrightness });
+  };
+
+  return (
+    <div className="glass rounded-2xl p-6 card-hover">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "h-12 w-12 rounded-xl flex items-center justify-center transition",
+            room.lit ? "bg-gradient-to-br from-amber-300/30 to-orange-400/30 text-amber-200 glow-primary" : "bg-white/5 text-muted-foreground"
+          )}>
+            <Lightbulb className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="font-semibold">{room.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {room.lit ? `${localBrightness}% · ${room.color === "warm" ? "Chaud" : "Froid"}` : "Éteint"}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleToggle}
+          disabled={updateRoomMutation.isPending}
+          className={cn(
+            "relative h-7 w-12 rounded-full transition disabled:opacity-60",
+            room.lit ? "bg-primary" : "bg-white/10"
+          )}
+        >
+          <span className={cn(
+            "absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-lg transition-transform",
+            room.lit ? "translate-x-5" : "translate-x-0.5"
+          )} />
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>Intensité</span>
+          <span className="tabular-nums">{localBrightness}%</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={localBrightness}
+          disabled={!room.lit || updateRoomMutation.isPending}
+          onChange={(e) => setLocalBrightness(Number(e.target.value))}
+          onMouseUp={handleBrightnessRelease}
+          onTouchEnd={handleBrightnessRelease}
+          className="w-full h-1.5 rounded-full appearance-none bg-white/10 accent-primary disabled:opacity-40"
+        />
+      </div>
+    </div>
   );
 }

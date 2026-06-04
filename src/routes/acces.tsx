@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
-import { Fingerprint, Mic, Radio, ScanFace, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Fingerprint, Mic, Radio, ScanFace, CheckCircle2, XCircle, Clock, AlertTriangle, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api/client";
+import { toast } from "sonner";
+import { PageTransition } from "@/components/PageTransition";
 
 export const Route = createFileRoute("/acces")({
   head: () => ({
@@ -14,31 +18,137 @@ export const Route = createFileRoute("/acces")({
   component: Acces,
 });
 
-const methods = [
-  { id: "face", name: "Reconnaissance faciale", icon: ScanFace, status: "Actif", desc: "12 visages enregistrés", color: "from-primary to-accent" },
-  { id: "voice", name: "Reconnaissance vocale", icon: Mic, status: "Actif", desc: "5 empreintes vocales", color: "from-accent to-pink-400" },
-  { id: "rfid", name: "Badge RFID / NFC", icon: Radio, status: "Actif", desc: "8 badges autorisés", color: "from-emerald-400 to-cyan-300" },
-  { id: "finger", name: "Empreinte digitale", icon: Fingerprint, status: "Veille", desc: "Capteur porte garage", color: "from-yellow-300 to-orange-400" },
-];
+interface AccessMethod {
+  id: string;
+  name: string;
+  icon: string;
+  status: string;
+  desc: string;
+  color: string;
+}
 
-const logs = [
-  { t: "14:32", who: "Alex Dupont", method: "Faciale", door: "Entrée principale", ok: true },
-  { t: "14:18", who: "Marie Dupont", method: "Vocale", door: "Garage", ok: true },
-  { t: "13:55", who: "Inconnu", method: "Faciale", door: "Entrée principale", ok: false },
-  { t: "13:30", who: "Léo Dupont", method: "Badge RFID", door: "Porte arrière", ok: true },
-  { t: "12:48", who: "Femme de ménage", method: "Code PIN", door: "Entrée principale", ok: true },
-  { t: "11:42", who: "Inconnu", method: "Vocale", door: "Garage", ok: false },
-];
+interface AccessLog {
+  id: string;
+  t: string;
+  who: string;
+  method: string;
+  door: string;
+  ok: boolean;
+}
+
+const getAccessIcon = (iconName: string) => {
+  switch (iconName?.toLowerCase()) {
+    case "scanface": return ScanFace;
+    case "mic": return Mic;
+    case "radio": return Radio;
+    case "fingerprint": return Fingerprint;
+    default: return Fingerprint;
+  }
+};
 
 function Acces() {
+  const queryClient = useQueryClient();
   const [scanning, setScanning] = useState(false);
+
+  // Queries
+  const { 
+    data: methods, 
+    isLoading: methodsLoading, 
+    error: methodsError,
+    refetch: refetchMethods 
+  } = useQuery<AccessMethod[]>({
+    queryKey: ["access_methods"],
+    queryFn: () => apiClient.get<AccessMethod[]>("/api/access-methods"),
+  });
+
+  const { 
+    data: logs, 
+    isLoading: logsLoading, 
+    error: logsError,
+    refetch: refetchLogs 
+  } = useQuery<AccessLog[]>({
+    queryKey: ["access_logs"],
+    queryFn: () => apiClient.get<AccessLog[]>("/api/access-logs"),
+  });
+
+  // Mutations
+  const testScanMutation = useMutation({
+    mutationFn: () => apiClient.post<AccessLog>("/api/security/test-scan", {}),
+    onMutate: () => {
+      setScanning(true);
+    },
+    onSuccess: (newLog) => {
+      // Simulate real timing for the face scanner graphic
+      setTimeout(() => {
+        setScanning(false);
+        queryClient.setQueryData<AccessLog[]>(["access_logs"], (prev) => {
+          if (!prev) return [newLog];
+          return [newLog, ...prev];
+        });
+        toast.success(`Scan test complété : ${newLog.who} détecté.`);
+      }, 2000);
+    },
+    onError: () => {
+      setScanning(false);
+      toast.error("Le test de scan biométrique a échoué.");
+    }
+  });
+
+  const isLoading = methodsLoading || logsLoading;
+  const hasError = methodsError || logsError;
+
+  const handleRetryAll = () => {
+    refetchMethods();
+    refetchLogs();
+  };
+
+  if (hasError) {
+    return (
+      <AppShell title="Accès intelligents" subtitle="Pilotage biométrique et journalisation complète des entrées.">
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="glass-strong p-8 rounded-3xl max-w-md text-center border border-destructive/20">
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-bold">Panne du système biométrique</h3>
+            <p className="text-sm text-muted-foreground mt-2 mb-6">
+              Impossible de charger les méthodes d'accès et le journal des entrées.
+            </p>
+            <button
+              onClick={handleRetryAll}
+              className="bg-primary text-primary-foreground font-semibold px-5 py-3 rounded-xl text-sm flex items-center gap-2 mx-auto hover:opacity-90 transition"
+            >
+              <RefreshCw className="h-4 w-4" /> Réessayer
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <AppShell title="Accès intelligents" subtitle="Connexion au système biométrique...">
+        <div className="space-y-8 animate-pulse">
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 grid sm:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-40 glass rounded-2xl" />
+              ))}
+            </div>
+            <div className="h-80 glass rounded-2xl" />
+          </div>
+          <div className="h-64 glass rounded-2xl" />
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="Accès intelligents" subtitle="Pilotage biométrique et journalisation complète des entrées.">
+      <PageTransition>
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 grid sm:grid-cols-2 gap-4">
-          {methods.map((m, i) => {
-            const Icon = m.icon;
+          {methods?.map((m, i) => {
+            const Icon = getAccessIcon(m.icon);
             return (
               <div
                 key={m.id}
@@ -82,10 +192,11 @@ function Acces() {
             )}
           </div>
           <button
-            onClick={() => { setScanning(true); setTimeout(() => setScanning(false), 2500); }}
-            className="mt-4 bg-gradient-to-r from-primary to-accent text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition"
+            onClick={() => testScanMutation.mutate()}
+            disabled={scanning || testScanMutation.isPending}
+            className="mt-4 bg-gradient-to-r from-primary to-accent text-primary-foreground py-3 rounded-xl font-semibold text-sm hover:opacity-90 transition disabled:opacity-60"
           >
-            Lancer un scan test
+            {scanning ? "Scan en cours..." : "Lancer un scan test"}
           </button>
         </div>
       </div>
@@ -100,8 +211,8 @@ function Acces() {
           <Clock className="h-4 w-4 text-muted-foreground" />
         </div>
         <div className="divide-y divide-glass-border">
-          {logs.map((l, i) => (
-            <div key={i} className="px-6 py-4 flex items-center gap-4 hover:bg-white/5 transition">
+          {logs?.map((l, i) => (
+            <div key={l.id || i} className="px-6 py-4 flex items-center gap-4 hover:bg-white/5 transition">
               {l.ok ? (
                 <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
               ) : (
@@ -117,6 +228,7 @@ function Acces() {
           ))}
         </div>
       </section>
+      </PageTransition>
     </AppShell>
   );
 }
