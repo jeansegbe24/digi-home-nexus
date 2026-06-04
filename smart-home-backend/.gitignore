@@ -1,0 +1,20 @@
+# Environments
+.env
+.env.local
+.env.prod
+.env.prod.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Database
+*.sqlite3
+*.db
+
+# OS
+.DS_Store
