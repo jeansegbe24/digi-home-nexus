@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_validator
 from typing import List
 
 
@@ -12,6 +12,16 @@ class Settings(BaseSettings):
 
     # Database (Supabase PostgreSQL)
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/smarthome"
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):
+                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     # CORS — comma-separated list of allowed frontend origins
     VITE_FRONTEND_URL: str = "http://localhost:8080"
