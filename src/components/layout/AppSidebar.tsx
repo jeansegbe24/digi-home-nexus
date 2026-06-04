@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Fingerprint,
@@ -9,8 +9,10 @@ import {
   Users,
   Home,
   Settings,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const nav = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
@@ -22,8 +24,24 @@ const nav = [
   { to: "/utilisateurs", label: "Utilisateurs", icon: Users },
 ];
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: "/connexion" });
+  };
 
   return (
     <aside className="hidden lg:flex fixed inset-y-0 left-0 w-72 flex-col glass-strong border-r border-glass-border z-40">
@@ -65,18 +83,23 @@ export function AppSidebar() {
         <div className="glass rounded-2xl p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center text-sm font-bold">
-              AD
+              {user ? getInitials(user.nom) : "??"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate">Alex Dupont</p>
-              <p className="text-xs text-muted-foreground truncate">Administrateur</p>
+              <p className="text-sm font-semibold truncate">{user?.nom ?? "Utilisateur"}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.role ?? "—"}</p>
             </div>
             <Settings className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer" />
           </div>
         </div>
-        <Link to="/connexion" className="block text-center text-xs text-muted-foreground hover:text-foreground py-2">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground py-2 transition"
+        >
+          <LogOut className="h-3.5 w-3.5" />
           Se déconnecter
-        </Link>
+        </button>
       </div>
     </aside>
   );

@@ -1,18 +1,36 @@
 import { toast } from "sonner";
 
+/** Empty string = same-origin (Vite dev proxy or production reverse proxy). */
 export const getResolvedApiUrl = (): string => {
-  const envUrl = import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL as string | undefined;
+
+  if (envUrl === "" || envUrl === "same-origin") {
+    return "";
+  }
+
   if (envUrl) {
     if (envUrl.includes("localhost") && typeof window !== "undefined" && window.location.hostname !== "localhost") {
       return envUrl.replace("localhost", window.location.hostname).replace(/\/$/, "");
     }
     return envUrl.replace(/\/$/, "");
   }
-  
+
   if (typeof window !== "undefined") {
     return `http://${window.location.hostname}:8000`;
   }
   return "http://localhost:8000";
+};
+
+export const getWebSocketUrl = (): string => {
+  const apiUrl = getResolvedApiUrl();
+  if (apiUrl) {
+    return apiUrl.replace(/^http/, "ws") + "/ws";
+  }
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/ws`;
+  }
+  return "ws://localhost:8000/ws";
 };
 
 export const BASE_URL = getResolvedApiUrl();

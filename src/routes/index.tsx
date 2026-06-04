@@ -120,6 +120,7 @@ function Dashboard() {
     mutationFn: (scenarioName: string) => 
       apiClient.post("/api/scenarios/activate", { name: scenarioName }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
       toast.success("Scénario « Soirée » activé !");
     }
   });

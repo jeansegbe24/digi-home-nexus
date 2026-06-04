@@ -72,8 +72,8 @@ function Connexion() {
           // Trigger actual API login with demo credentials
           setTimeout(async () => {
             try {
-              const demoEmail = scanType === "face" ? "alex@digihome.com" : "marie@digihome.com";
-              const demoPassword = "password123";
+              const demoEmail = scanType === "face" ? "jean.dupont@digihome.com" : "marie.dupont@digihome.com";
+              const demoPassword = scanType === "face" ? "admin123" : "family123";
               await login(demoEmail, demoPassword);
               navigate({ to: "/" });
             } catch (err: any) {
@@ -170,7 +170,7 @@ function Connexion() {
               onClick={handleInstallClick}
               className="bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-90 transition"
             >
-              Installer
+              Installer l'application
             </button>
           </motion.div>
         )}
@@ -331,7 +331,7 @@ function Connexion() {
                 onClick={async () => {
                   setIsSubmitting(true);
                   try {
-                    await login("guest@digihome.com", "password123");
+                    await login("henri.dupont@digihome.com", "senior123");
                     navigate({ to: "/" });
                   } catch (err: any) {
                     toast.error(err.message || "Échec de connexion invité.");

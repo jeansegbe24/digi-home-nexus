@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getResolvedApiUrl } from "../lib/api/client";
+import { getWebSocketUrl } from "../lib/api/client";
 
 // Existing simulation helpers (for fallback/compatibility)
 export function useLiveNumber(initial: number, { min, max, step = 0.1, intervalMs = 1500 }: { min: number; max: number; step?: number; intervalMs?: number }) {
@@ -41,9 +41,7 @@ export function useWebSocket() {
     let isMounted = true;
 
     function connect() {
-      // Determine WebSocket URL from VITE_API_URL
-      const apiUrl = getResolvedApiUrl();
-      const wsUrl = apiUrl.replace(/^http/, "ws") + "/ws";
+      const wsUrl = getWebSocketUrl();
       
       console.log("Connexion WebSocket à :", wsUrl);
       const ws = new WebSocket(wsUrl);
@@ -81,6 +79,10 @@ export function useWebSocket() {
                 if (!Array.isArray(prev)) return [data];
                 return [data, ...prev].slice(0, 50);
               });
+              queryClient.setQueryData(["access_logs"], (prev: any) => {
+                if (!Array.isArray(prev)) return [data];
+                return [data, ...prev].slice(0, 50);
+              });
               break;
             case "alert":
               queryClient.setQueryData(["alerts"], (prev: any) => {
@@ -89,8 +91,12 @@ export function useWebSocket() {
               });
               break;
             case "energy":
-              queryClient.setQueryData(["energy"], (prev: any) => {
-                return prev ? { ...prev, ...data } : data;
+              queryClient.setQueryData(["energy", "24h"], (prev: any) => {
+                if (!prev?.chartData) return prev;
+                return {
+                  ...prev,
+                  chartData: [...prev.chartData.slice(1), { hour: data.time, kw: data.conso, solaire: data.solaire }],
+                };
               });
               break;
             case "door":

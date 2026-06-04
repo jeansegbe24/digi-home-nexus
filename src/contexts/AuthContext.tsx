@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { apiClient } from "@/lib/api/client";
+import { normalizeUser, type ApiUser, type FrontendRole } from "@/lib/api/roles";
 import { toast } from "sonner";
 
 export interface User {
   id: string;
   nom: string;
-  role: "Administrateur" | "Famille" | "Senior" | "Locataire" | "Invité";
+  role: FrontendRole;
   langue: "fr" | "en";
 }
 
@@ -27,9 +28,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     async function restoreSession() {
       try {
-        const userData = await apiClient.get<User>("/auth/me", { skipErrorToast: true });
+        const userData = await apiClient.get<ApiUser>("/auth/me", { skipErrorToast: true });
         if (userData && userData.id) {
-          setUser(userData);
+          setUser(normalizeUser(userData));
         }
       } catch (error) {
         // Ignored, session not active
@@ -55,10 +56,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       // Trying JSON login
-      const userData = await apiClient.post<User>("/auth/login", { email, password });
-      setUser(userData);
+      const userData = await apiClient.post<ApiUser>("/auth/login", { email, password });
+      setUser(normalizeUser(userData));
       toast.success(`Bienvenue, ${userData.nom} !`);
-      return userData;
+      return normalizeUser(userData);
     } catch (error: any) {
       setIsLoading(false);
       throw error;

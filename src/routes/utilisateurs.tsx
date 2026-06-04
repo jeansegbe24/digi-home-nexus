@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api/client";
+import { normalizeUser, toBackendRole, type ApiUser, type FrontendRole } from "@/lib/api/roles";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
 import { motion } from "framer-motion";
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/utilisateurs")({
 interface Profile {
   id: string;
   nom: string;
-  role: "Administrateur" | "Famille" | "Senior" | "Locataire" | "Invité";
+  role: FrontendRole;
   langue: "fr" | "en";
   email: string;
 }
@@ -72,17 +73,27 @@ function Utilisateurs() {
     refetch 
   } = useQuery<Profile[]>({
     queryKey: ["users"],
-    queryFn: () => apiClient.get<Profile[]>("/api/users"),
+    queryFn: async () => {
+      const users = await apiClient.get<ApiUser[]>("/api/users");
+      return users.map((u) => ({ ...normalizeUser(u), email: u.email }));
+    },
   });
 
   // Mutations
   const createUserMutation = useMutation({
-    mutationFn: (newUser: Omit<Profile, "id"> & { password?: string }) => 
-      apiClient.post<Profile>("/api/users", newUser),
+    mutationFn: (newUser: Omit<Profile, "id"> & { password?: string }) =>
+      apiClient.post<ApiUser>("/api/users", {
+        nom: newUser.nom,
+        email: newUser.email,
+        role: toBackendRole(newUser.role),
+        langue: newUser.langue,
+        password: newUser.password || "password123",
+      }),
     onSuccess: (data) => {
+      const profile = { ...normalizeUser(data), email: data.email };
       queryClient.setQueryData<Profile[]>(["users"], (prev) => {
-        if (!prev) return [data];
-        return [...prev, data];
+        if (!prev) return [profile];
+        return [...prev, profile];
       });
       toast.success(`Profil ${data.nom} créé avec succès.`);
       closeModal();
@@ -90,11 +101,17 @@ function Utilisateurs() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: (updatedUser: Profile) => 
-      apiClient.patch<Profile>(`/api/users/${updatedUser.id}`, updatedUser),
+    mutationFn: (updatedUser: Profile) =>
+      apiClient.patch<ApiUser>(`/api/users/${updatedUser.id}`, {
+        nom: updatedUser.nom,
+        email: updatedUser.email,
+        role: toBackendRole(updatedUser.role),
+        langue: updatedUser.langue,
+      }),
     onSuccess: (data) => {
-      queryClient.setQueryData<Profile[]>(["users"], (prev) => 
-        prev?.map((u) => u.id === data.id ? data : u)
+      const profile = { ...normalizeUser(data), email: data.email };
+      queryClient.setQueryData<Profile[]>(["users"], (prev) =>
+        prev?.map((u) => (u.id === profile.id ? profile : u))
       );
       toast.success(`Profil ${data.nom} mis à jour.`);
       closeModal();
