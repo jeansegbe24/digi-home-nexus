@@ -13,9 +13,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  // Deploy target — override the default cloudflare preset for Vercel
+  // Deploy target — dynamic preset, defaults to node-server for Render/local Node hosting
   nitro: {
-    preset: "vercel",
+    preset: process.env.NITRO_PRESET || "node-server",
   },
   vite: {
     plugins: [

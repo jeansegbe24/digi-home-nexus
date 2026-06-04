@@ -1,4 +1,5 @@
 services:
+  # ── Backend FastAPI Service ──────────────────────────────────────────
   - type: web
     name: digihome-backend
     env: python
@@ -8,9 +9,12 @@ services:
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        sync: false
+        sync: false # User will provide this from Supabase
       - key: VITE_FRONTEND_URL
-        sync: false
+        fromService:
+          type: web
+          name: digihome-frontend
+          property: url
       - key: ENVIRONMENT
         value: production
       - key: COOKIE_SECURE
@@ -19,3 +23,19 @@ services:
         value: "none"
       - key: SECRET_KEY
         generateValue: true
+
+  # ── Frontend React/TanStack Service ──────────────────────────────────
+  - type: web
+    name: digihome-frontend
+    env: node
+    rootDir: front
+    buildCommand: npm install && npm run build
+    startCommand: node .output/server/index.mjs
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: digihome-backend
+          property: url
+      - key: NITRO_PRESET
+        value: node-server
