@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: digihome-backend
+    env: python
+    rootDir: smart-home-backend
+    buildCommand: pip install -r requirements.txt
+    predeploy: alembic upgrade head
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: VITE_FRONTEND_URL
+        sync: false
+      - key: ENVIRONMENT
+        value: production
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAMESITE
+        value: "none"
+      - key: SECRET_KEY
+        generateValue: true
