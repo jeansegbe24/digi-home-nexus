@@ -11,10 +11,7 @@ services:
       - key: DATABASE_URL
         sync: false # User will provide this from Supabase
       - key: VITE_FRONTEND_URL
-        fromService:
-          type: web
-          name: digihome-frontend
-          property: url
+        sync: false # User will provide the frontend URL (e.g., https://digihome-frontend.onrender.com)
       - key: ENVIRONMENT
         value: production
       - key: COOKIE_SECURE
@@ -33,9 +30,6 @@ services:
     startCommand: node .output/server/index.mjs
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: digihome-backend
-          property: url
+        sync: false # User will provide the backend URL (e.g., https://digihome-backend.onrender.com)
       - key: NITRO_PRESET
         value: node-server
